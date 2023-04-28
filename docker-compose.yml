@@ -94,6 +94,14 @@ services:
     depends_on:      
       postgres_svr:
         condition: service_healthy
+    
+  go_svr:
+    build: ./keycloakrestapi
+    ports:
+      - "8888:8888"
+    depends_on:
+      keycloak_svr:
+        condition: service_healthy
 
 volumes:
   grafana_data: {}
