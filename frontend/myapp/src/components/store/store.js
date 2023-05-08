@@ -8,7 +8,7 @@ const darkThemeState = {
 };
 
 const initialComponentShowState = {
-  login: true,
+  login: false,
 };
 
 const themeSlice = createSlice({
