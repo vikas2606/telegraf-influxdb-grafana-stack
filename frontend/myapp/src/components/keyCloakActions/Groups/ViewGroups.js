@@ -14,7 +14,8 @@ function ViewGroups() {
   const fetchData = () => {
     axios
       .get(
-        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_GET_GROUPS}${process.env.REACT_APP_GOCLOAK_REALM}`
+        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_GET_GROUPS}${process.env.REACT_APP_GOCLOAK_REALM}`,
+        { withCredentials: true }
       )
       .then((response) => {
         setGroupslist(response.data);
@@ -30,13 +31,14 @@ function ViewGroups() {
   }, [addingGroup, deletingGroup]);
 
   const groupDeleteHandler = (id, name) => {
+    setDeletingGroup(true)
     if (window.confirm(`Are you sure want to delete ${name}?`)) {
       axios
         .delete(
-          `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_DELETE_GROUP}${process.env.REACT_APP_GOCLOAK_REALM}/${id}/`
+          `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_DELETE_GROUP}${process.env.REACT_APP_GOCLOAK_REALM}/${id}/`,{withCredentials:true}
         )
         .then((response) => {
-          setDeletingGroup(true);
+          setDeletingGroup(false);
           toast("Group deleted successfully!", { icon: "🗑️" });
         })
         .catch((error) => {

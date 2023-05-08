@@ -1,0 +1,17 @@
+{
+    "cells": {
+      "0": {
+        "schedule": {
+          "dl_sched_users_avg": 0,
+          "ul_sched_users_avg": 0
+        }
+      },
+      "1": {
+        "schedule": {
+          "dl_sched_users_avg": 0,
+          "ul_sched_users_avg": 0
+        }
+      }
+    }
+  }
+  

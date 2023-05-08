@@ -5,13 +5,13 @@ services:
     container_name: telegraf
     restart: always
     volumes:
-    - ./telegraf/vm-stats/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./telegraf/vm-stats/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     depends_on:
       - influxdb
     links:
       - influxdb
     ports:
-    - '8094:8094'
+      - "8094:8094"
 
   influxdb:
     image: influxdb:1.8-alpine
@@ -22,7 +22,7 @@ services:
       - INFLUXDB_ADMIN_USER=admin
       - INFLUXDB_ADMIN_PASSWORD=admin
     ports:
-      - '8086:8086'
+      - "8086:8086"
     volumes:
       - influxdb_data:/var/lib/influxdb
 
@@ -38,17 +38,16 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_BASIC_ENABLED=false
       - GF_ALERTING_ENABLED=false
-      - GF_UNIFIED_ALERTING_ENABLED=false  
+      - GF_UNIFIED_ALERTING_ENABLED=false
     links:
       - influxdb
     ports:
-      - '3000:3000'
+      - "3000:3000"
     volumes:
       - ./grafana/provisioning/influxdb_ds.yml:/etc/grafana/provisioning/datasources/influxdb_ds.yml:ro
       - ./grafana/provisioning/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml:ro
       - ./grafana/provisioning/telegraf-system-dashboard.json:/var/lib/grafana/dashboards/telegraf-system-dashboard.json:ro
       - grafana_data:/var/lib/grafana
-
 
   frontend:
     image: react_frontend
@@ -62,49 +61,6 @@ services:
     ports:
       - "3001:3000"
 
-  postgres_svr: 
-    image: postgres
-    command: postgres -c 'max_connections=200' && postgres -c 'shared_buffers=24MB'    
-    environment:
-      # Environment Variables expecially for Postgres
-      POSTGRES_DB: db_name
-      POSTGRES_USER: user_name
-      POSTGRES_PASSWORD: password
-    healthcheck:
-      test: "exit 0"
-    ports:
-      - "5432:5432"
-
-  keycloak_svr:    
-    image: quay.io/keycloak/keycloak:21.0.2        
-    command: start-dev
-    environment:      
-      KC_DB: postgres
-      KC_DB_URL_HOST: postgres_svr
-      KC_DB_URL_DATABASE: db_name
-      KC_DB_PASSWORD: password
-      KC_DB_USERNAME: user_name
-      KC_DB_SCHEMA: public
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    healthcheck:
-      test: "exit 0"   
-    ports:
-      - "8080:8080"       
-    depends_on:      
-      postgres_svr:
-        condition: service_healthy
-    
-  go_svr:
-    build: ./keycloakrestapi
-    ports:
-      - "8888:8888"
-    depends_on:
-      keycloak_svr:
-        condition: service_healthy
-
 volumes:
   grafana_data: {}
   influxdb_data: {}
-
-

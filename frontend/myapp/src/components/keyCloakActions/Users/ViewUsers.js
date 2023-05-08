@@ -12,7 +12,8 @@ function ViewUsers() {
   const fetchData = () => {
     axios
       .get(
-        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_GET_USERS}${process.env.REACT_APP_GOCLOAK_REALM}`
+        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_GET_USERS}${process.env.REACT_APP_GOCLOAK_REALM}`,
+        { withCredentials: true }
       )
       .then((response) => {
         setUsers(response.data);
@@ -23,13 +24,14 @@ function ViewUsers() {
   };
 
   const userDeleteHandler = (userid, username) => {
+    setDeletingUser(true)
     if (window.confirm(`Are you sure want to delete ${username}?`)) {
       axios
         .delete(
-          `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_DELETE_USERS}${process.env.REACT_APP_GOCLOAK_REALM}/${userid}/`
+          `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_DELETE_USERS}${process.env.REACT_APP_GOCLOAK_REALM}/${userid}/`,{withCredentials:true}
         )
         .then((response) => {
-          setDeletingUser(true);
+          setDeletingUser(false);
           toast("User deleted successfully!", { icon: "🗑️" });
         })
         .catch((error) => {

@@ -7,6 +7,7 @@ import { getGrafanaGraphSnapshot } from "./BenchmarkSources";
 import ThroughPutGraph from "../victorygraphs/ThroughPutGraph";
 import PacketsGraph from "../victorygraphs/PacketsGraph";
 import Scheduled from "../victorygraphs/Scheduled";
+import PDSCHgraph from "../victorygraphs/PDSCHgraph";
 
 const timeRanges = {
   "Last 5 minutes": "now-5m",
@@ -19,6 +20,7 @@ const timeRanges = {
   "Last 24 hours": "now-24h",
   "Last 2 days": "now-2d",
   "Last 7 days": "now-7d",
+  "Last 90 days":"now-90d"
 };
 
 const refreshRanges = {
@@ -128,6 +130,11 @@ const BenchmarkGraph = () => {
           <div className="relative pb-56.25 overflow-hidden p-4 w-100%">
             <div className="shadow-md border-2 p-4 border-gray-400 dark:border-simnovous-dark-teal rounded-lg bg-white dark:bg-simnovous-dark-teal ">
               <PacketsGraph isDarkTheme={isDarkTheme} />
+            </div>
+          </div>
+          <div className="relative pb-56.25 overflow-hidden p-4 w-100%">
+            <div className="shadow-md border-2 p-4 border-gray-400 dark:border-simnovous-dark-teal rounded-lg bg-white dark:bg-simnovous-dark-teal ">
+              <PDSCHgraph isDarkTheme={isDarkTheme}/>
             </div>
           </div>
         </div>

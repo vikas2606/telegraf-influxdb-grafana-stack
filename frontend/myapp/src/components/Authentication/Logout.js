@@ -5,15 +5,19 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 function Logout() {
-    const navigate=useNavigate()
-    const dispatch=useDispatch()
-    const LogOutHandler=()=>{
-        axios.post(`${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_LOGOUT_ADMIN_PATH}${process.env.REACT_APP_GOCLOAK_REALM}`).then((event)=>{
-            dispatch(componentActions.setlogin(false))
-            navigate("/")
-        }
-        )
-    }
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const LogOutHandler = () => {
+    axios
+      .post(
+        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_LOGOUT_ADMIN_PATH}${process.env.REACT_APP_GOCLOAK_REALM}`,
+        { withCredentials: true }
+      )
+      .then((event) => {
+        dispatch(componentActions.setlogin(false));
+        navigate("/");
+      });
+  };
   return (
     <div class="h-8 items-end">
       <button

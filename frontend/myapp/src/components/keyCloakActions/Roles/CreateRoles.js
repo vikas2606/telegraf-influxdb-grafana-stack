@@ -13,7 +13,7 @@ function CreateRoles({onClose}) {
     axios
       .post(
         `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_CREATEROLE_PATH}${process.env.REACT_APP_GOCLOAK_REALM}`,
-        {name}
+        {name},{withCredentials:true}
       )
       .then((response) => {
         console.log("role added successfully");

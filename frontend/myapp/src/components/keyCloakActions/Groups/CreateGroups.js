@@ -13,7 +13,7 @@ function CreateGroups({ onClose }) {
     axios
       .post(
         `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_CREATEGROUP_PATH}${process.env.REACT_APP_GOCLOAK_REALM}`,
-        { name }
+        { name },{withCredentials:true}
       )
       .then((response) => {
         setIsLoading(false);

@@ -27,7 +27,7 @@ function CreateUsers({ onClose }) {
             enabled,
           },
           password,
-        }
+        },{withCredentials:true}
       )
       .then((response) => {
         console.log("User created successfully");

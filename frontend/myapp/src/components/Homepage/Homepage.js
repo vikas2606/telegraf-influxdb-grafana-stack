@@ -6,7 +6,6 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import PersonIcon from "@mui/icons-material/Person";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EngineeringIcon from "@mui/icons-material/Engineering";
-import LogoutIcon from '@mui/icons-material/Logout';
 import "./Homepage.css";
 
 function Homepage() {
@@ -18,7 +17,7 @@ function Homepage() {
         <Menu class="h-screen bg-white dark:bg-simnovous-teal">
           <MenuItem
             icon={
-              <MenuOutlinedIcon className="rounded hover:bg-simnovous-orange bg-white dark:bg-simnovous-teal text-black dark:text-simnovous-orange" />
+              <MenuOutlinedIcon className="rounded hover:bg-simnovous-orange bg-white dark:bg-simnovous-teal text-black hover:text-black dark:text-simnovous-orange" />
             }
             onClick={() => {
               collapseSidebar();
@@ -66,15 +65,7 @@ function Homepage() {
             Roles
           </MenuItem>
 
-          <MenuItem
-            
-            icon={
-              <LogoutIcon className="rounded bg-white dark:bg-simnovous-teal text-black dark:text-simnovous-orange" />
-            }
-            className="dark:text-white"
-          >
-            Logout
-          </MenuItem>
+       
         </Menu>
       </Sidebar>
       <main> </main>

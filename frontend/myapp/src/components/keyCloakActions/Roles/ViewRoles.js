@@ -12,7 +12,8 @@ function ViewRoles() {
   const fetchData = () => {
     axios
       .get(
-        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_GET_ROLES}${process.env.REACT_APP_GOCLOAK_REALM}`
+        `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_GET_ROLES}${process.env.REACT_APP_GOCLOAK_REALM}`,
+        { withCredentials: true }
       )
       .then((response) => {
         setRoleslist(response.data);
@@ -24,7 +25,7 @@ function ViewRoles() {
 
   useEffect(() => {
     fetchData();
-  }, [addingRole]);
+  }, [addingRole,deleteRole]);
 
   function handleAddRole() {
     setAddingRole(!addingRole);
@@ -36,14 +37,15 @@ function ViewRoles() {
   }
 
   const roleDeleteHandler = (roleid, rolename) => {
+    setDeleteRole(true)
     if (window.confirm(`Are you sure want to delete ${rolename}?`)) {
       axios
         .delete(
-          `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_DELETE_ROLE}${process.env.REACT_APP_GOCLOAK_REALM}/${rolename}/`
+          `${process.env.REACT_APP_GOCLOAK_URL}${process.env.REACT_APP_GOCLOAK_DELETE_ROLE}${process.env.REACT_APP_GOCLOAK_REALM}/${rolename}/`,{withCredentials:true}
         )
         .then((response) => {
           console.log(response.data);
-          setDeleteRole(true);
+          setDeleteRole(false);
           toast("Role deleted successfully!", { icon: "🗑️" });
         })
         .catch((error) => {

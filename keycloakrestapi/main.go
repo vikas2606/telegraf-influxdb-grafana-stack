@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gin-contrib/cors"
@@ -67,10 +68,13 @@ func adminLogin(c *gin.Context) {
 	}
 	http.SetCookie(c.Writer, &refreshCookie)
 
+	expiration := time.Now().Add(24 * time.Hour)
+
 	accessCookie := http.Cookie{
 		Name:     "access_token",
 		Value:    token.AccessToken,
 		Path:     "/",
+		Expires:  expiration,
 		HttpOnly: true,
 	}
 	http.SetCookie(c.Writer, &accessCookie)
@@ -155,12 +159,17 @@ func adminLogout(c *gin.Context) {
 }
 
 func createRealm(c *gin.Context) {
-	var token = get_token()
+	accessCookie, err := c.Request.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
+
 	var Realm gocloak.RealmRepresentation
 	if err := c.BindJSON(&Realm); err != nil {
 		return
 	}
-	res, err := client.CreateRealm(context.Background(), token.AccessToken, Realm)
+	res, err := client.CreateRealm(context.Background(), accessCookie.Value, Realm)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 	}
@@ -169,13 +178,17 @@ func createRealm(c *gin.Context) {
 }
 
 func createGroup(c *gin.Context) {
-	var token = get_token()
+	accessCookie, err := c.Request.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	var group gocloak.Group
 	if err := c.BindJSON(&group); err != nil {
 		return
 	}
 	Realm := c.Param("realm")
-	res, err := client.CreateGroup(context.Background(), token.AccessToken, Realm, group)
+	res, err := client.CreateGroup(context.Background(), accessCookie.Value, Realm, group)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 	}
@@ -183,9 +196,11 @@ func createGroup(c *gin.Context) {
 }
 
 func createRealmRole(c *gin.Context) {
-
-	var token = get_token()
-
+	accessCookie, err := c.Request.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	var newRole gocloak.Role
 	if err := c.ShouldBindJSON(&newRole); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -193,7 +208,7 @@ func createRealmRole(c *gin.Context) {
 	}
 
 	Realm := c.Param("realm")
-	roleID, err := client.CreateRealmRole(context.Background(), token.AccessToken, Realm, newRole)
+	roleID, err := client.CreateRealmRole(context.Background(), accessCookie.Value, Realm, newRole)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create realm role"})
 		return
@@ -203,10 +218,24 @@ func createRealmRole(c *gin.Context) {
 }
 
 func getUsers(c *gin.Context) {
-	var token = get_token()
+	accessCookie, err := c.Request.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 
 	Realm := c.Param("realm")
-	users, err := client.GetUsers(context.Background(), token.AccessToken, Realm, gocloak.GetUsersParams{})
+
+	numUsers := c.Query("numUsers")
+	if numUsers == "" {
+		numUsers = "1000"
+	}
+	num, err := strconv.Atoi(numUsers)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userRoles parameter"})
+	}
+
+	users, err := client.GetUsers(context.Background(), accessCookie.Value, Realm, gocloak.GetUsersParams{Max: &num})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve users"})
 		return
@@ -230,8 +259,11 @@ func getUsers(c *gin.Context) {
 }
 
 func getGroups(c *gin.Context) {
-	var token = get_token()
-
+	accessCookie, err := c.Request.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	Realm := c.Param("realm")
 
 	numGroups := c.Query("numGroups")
@@ -244,7 +276,7 @@ func getGroups(c *gin.Context) {
 		return
 	}
 
-	groups, err := client.GetGroups(context.Background(), token.AccessToken, Realm, gocloak.GetGroupsParams{Max: &num})
+	groups, err := client.GetGroups(context.Background(), accessCookie.Value, Realm, gocloak.GetGroupsParams{Max: &num})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve groups"})
 		return
@@ -265,8 +297,11 @@ func getGroups(c *gin.Context) {
 }
 
 func getRoles(c *gin.Context) {
-	var token = get_token()
-
+	accessCookie, err := c.Request.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	Realm := c.Param("realm")
 
 	numRoles := c.Query("numRoles")
@@ -279,7 +314,7 @@ func getRoles(c *gin.Context) {
 		return
 	}
 
-	roles, err := client.GetRealmRoles(context.Background(), token.AccessToken, Realm, gocloak.GetRoleParams{Max: &num})
+	roles, err := client.GetRealmRoles(context.Background(), accessCookie.Value, Realm, gocloak.GetRoleParams{Max: &num})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve Roles"})
 		return
@@ -395,11 +430,15 @@ func getRealmRoleByName(c *gin.Context) {
 }
 
 func deleteUser(c *gin.Context) {
-	var token = get_token()
+	accessCookie, errr := c.Request.Cookie("access_token")
+	if errr != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	userID := c.Param("userID")
 
 	Realm := c.Param("realm")
-	err := client.DeleteUser(context.Background(), token.AccessToken, Realm, userID)
+	err := client.DeleteUser(context.Background(), accessCookie.Value, Realm, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user"})
 		return
@@ -410,11 +449,15 @@ func deleteUser(c *gin.Context) {
 }
 
 func deleteGroup(c *gin.Context) {
-	var token = get_token()
+	accessCookie, errr := c.Request.Cookie("access_token")
+	if errr != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	groupID := c.Param("groupID")
 	Realm := c.Param("realm")
 
-	err := client.DeleteGroup(context.Background(), token.AccessToken, Realm, groupID)
+	err := client.DeleteGroup(context.Background(), accessCookie.Value, Realm, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete group"})
 		return
@@ -424,11 +467,15 @@ func deleteGroup(c *gin.Context) {
 }
 
 func deleteRealmRole(c *gin.Context) {
-	var token = get_token()
+	accessCookie, errr := c.Request.Cookie("access_token")
+	if errr != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "access token not found"})
+		return
+	}
 	roleName := c.Param("roleName")
 	Realm := c.Param("realm")
 
-	err := client.DeleteRealmRole(context.Background(), token.AccessToken, Realm, roleName)
+	err := client.DeleteRealmRole(context.Background(), accessCookie.Value, Realm, roleName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete realm"})
 		return
