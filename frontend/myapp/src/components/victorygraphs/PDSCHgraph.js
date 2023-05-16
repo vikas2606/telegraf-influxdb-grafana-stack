@@ -27,7 +27,7 @@ const cellData = Object.entries(data.cells).map(([id, cell]) => ({
   },
 }));
 
-function PDSCHgraph({ isDarkTheme }) {
+function PDSCHgraph({ isDarkTheme,timeRange }) {
   const [zoomaxis, setZoomaxis] = useState("null");
   const [checkboxX, setCheckboxX] = useState(false);
   const [checkboxY, setCheckboxY] = useState(false);
@@ -76,6 +76,7 @@ function PDSCHgraph({ isDarkTheme }) {
           });
         });
       }
+      console.log(cellData.dl_sched_users_avg)
   },[])
 
   

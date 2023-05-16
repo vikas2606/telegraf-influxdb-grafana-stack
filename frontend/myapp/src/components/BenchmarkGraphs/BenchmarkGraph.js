@@ -4,23 +4,20 @@ import { selectTheme } from "../store/store";
 import { getGrafanaSourceSnapshot } from "./BenchmarkSources";
 import { getGrafanaGraphSnapshot } from "./BenchmarkSources";
 
+
 import ThroughPutGraph from "../victorygraphs/ThroughPutGraph";
 import PacketsGraph from "../victorygraphs/PacketsGraph";
 import Scheduled from "../victorygraphs/Scheduled";
 import PDSCHgraph from "../victorygraphs/PDSCHgraph";
 
 const timeRanges = {
-  "Last 5 minutes": "now-5m",
-  "Last 10 minutes": "now-10m",
-  "Last 30 minutes": "now-30m",
-  "Last 1 hour": "now-1h",
-  "Last 3 hours": "now-3h",
-  "Last 6 hours": "now-6h",
-  "Last 12 hours": "now-12h",
-  "Last 24 hours": "now-24h",
-  "Last 2 days": "now-2d",
-  "Last 7 days": "now-7d",
-  "Last 90 days":"now-90d"
+  "Last 1 minute":"1",
+  "Last 2 minutes":"2",
+  "Last 5 minutes": "5",
+  "Last 10 minutes": "10",
+  "Last 30 minutes": "30",
+  "Last 1 hour": "60",
+  "Last 3 hours": "180",
 };
 
 const refreshRanges = {
@@ -49,6 +46,8 @@ const BenchmarkGraph = () => {
   const [fromDate, setFromDate] = useState("now-5m");
   const [toDate, setToDate] = useState("now");
   const [refreshTime, setRefreshTime] = useState("1m");
+  const ws = new WebSocket("ws://localhost:8080/ws");
+
 
   const grafanaSources = getGrafanaSourceSnapshot();
   const sourcesToShow = Object.values(grafanaSources);
@@ -116,25 +115,39 @@ const BenchmarkGraph = () => {
       </div>
       {viewGraph === "victory" ? (
         <div>
+           <div className="flex flex-row justify-end">
+            <select
+              id="time-range-select"
+              onChange={handleTimeRangeChange}
+              value={timeRange}
+              className="px-4 py-2 rounded-md mt-4 mx-2 dark:bg-simnovous-dark-teal dark:text-white"
+            >
+              {Object.keys(timeRanges).map((key) => (
+                <option key={key} value={key} className="dark:text-white">
+                  {key}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="relative overflow-hidden p-4 w-100%">
             <div className=" shadow-md border-2 p-4 border-gray-400 dark:border-simnovous-dark-teal rounded-lg bg-white dark:bg-simnovous-dark-teal ">
-              <ThroughPutGraph isDarkTheme={isDarkTheme} />
+              <ThroughPutGraph isDarkTheme={isDarkTheme} timeRange={timeRanges[timeRange]}/>
             </div>
           </div>
           <div className="relative pb-56.25 overflow-hidden p-4 w-100%">
             <div className=" shadow-md border-2 p-4 border-gray-400 dark:border-simnovous-dark-teal rounded-lg bg-white dark:bg-simnovous-dark-teal ">
-              <Scheduled isDarkTheme={isDarkTheme} />
+              <Scheduled isDarkTheme={isDarkTheme} timeRange={timeRanges[timeRange]}/>
             </div>
           </div>
 
           <div className="relative pb-56.25 overflow-hidden p-4 w-100%">
             <div className="shadow-md border-2 p-4 border-gray-400 dark:border-simnovous-dark-teal rounded-lg bg-white dark:bg-simnovous-dark-teal ">
-              <PacketsGraph isDarkTheme={isDarkTheme} />
+              <PacketsGraph isDarkTheme={isDarkTheme} timeRange={timeRanges[timeRange]}/>
             </div>
           </div>
           <div className="relative pb-56.25 overflow-hidden p-4 w-100%">
             <div className="shadow-md border-2 p-4 border-gray-400 dark:border-simnovous-dark-teal rounded-lg bg-white dark:bg-simnovous-dark-teal ">
-              <PDSCHgraph isDarkTheme={isDarkTheme}/>
+              <PDSCHgraph isDarkTheme={isDarkTheme} timeRange={timeRanges[timeRange]}/>
             </div>
           </div>
         </div>

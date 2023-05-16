@@ -16,6 +16,16 @@ export const color_dl = [
   "#7FFF00",
   "#9ACD32",
   "#228B22",
+  "#0000FF",
+  "#1E90FF",
+  "#4169E1",
+  "#6495ED",
+  "#87CEEB",
+  "#ADD8E6",
+  "#B0C4DE",
+  "#4682B4",
+  "#87CEFA",
+  "#00BFFF",
 ];
 export const color_ul = [
   "#0000FF",

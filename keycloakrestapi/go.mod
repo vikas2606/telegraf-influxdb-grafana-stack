@@ -3,7 +3,7 @@ module example/RESTAPI-NEW
 go 1.20
 
 require (
-	github.com/Nerzal/gocloak/v13 v13.3.0 // indirect
+	github.com/Nerzal/gocloak/v13 v13.5.0 // indirect
 	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/gin-contrib/cors v1.4.0 // indirect

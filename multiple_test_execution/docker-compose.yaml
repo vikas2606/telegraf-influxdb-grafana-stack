@@ -1,0 +1,66 @@
+
+version: '3.6'
+services:
+  
+  timescaledb:
+    image: timescale/timescaledb-ha:pg14-latest
+    container_name: timescaledb
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    networks:
+      - test-execution-cluster
+      
+  zincObserve:
+    image: public.ecr.aws/zinclabs/zincobserve:v0.3.2
+    container_name: zincobserve
+    environment:
+      ZO_ROOT_USER_EMAIL: root@example.com
+      ZO_ROOT_USER_PASSWORD: root
+    ports:
+      - "5080:5080"
+    networks:
+      - test-execution-cluster
+
+  telegraf-1:
+    image: nehaalhat30/my_telegraf
+    container_name: telegraf-1
+    restart: always
+    volumes:
+    - ./tel-conf/telegraf-1.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - timescaledb
+      - zincObserve
+    links:
+      - timescaledb
+      - zincObserve
+    ports:
+    - '8094:8094'
+    networks:
+      - test-execution-cluster
+
+  datagen-1:
+    image: datagen
+    container_name: datagen-1
+    depends_on:
+      - telegraf-1
+    links:
+      - telegraf-1    
+    ports:
+      - '9003:9003'
+    networks:
+      - test-execution-cluster
+
+  go-app:
+    build: ./goapp
+    container_name: goapp
+    ports:
+      - 8080:8080
+    depends_on:
+      - timescaledb
+
+
+networks:
+  test-execution-cluster:

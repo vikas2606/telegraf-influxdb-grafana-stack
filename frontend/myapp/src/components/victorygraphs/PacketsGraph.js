@@ -10,10 +10,12 @@ import {
   VictoryVoronoiContainer,
   VictoryTooltip,
   VictoryZoomContainer,
+  VictoryLabel,
 } from "victory";
 
 import React, { useState, useEffect } from "react";
 import data from "./data/Packets.json";
+import { w3cwebsocket as WebSocket } from "websocket";
 import HighestPacketCount from "./helpers/HighestPacketCount";
 import {
   XaxisProps,
@@ -26,26 +28,16 @@ import {
   chartStyles,
 } from "./helpers/chartstyle";
 
-const cellData = Object.entries(data.cells).map(([id, cell]) => ({
-  id: parseInt(id),
-  dl_rx: [],
-  dl_err: [],
-  ul_tx: [],
-  ul_retx: [],
-  dl_retx: [],
-  packets: {
-    dl_rx_count: cell.packets.dl_rx_count,
-    dl_err_count: cell.packets.dl_err_count,
-    ul_tx_count: cell.packets.ul_tx_count,
-    ul_retx_count: cell.packets.ul_retx_count,
-    dl_retx_count: cell.packets.dl_retx_count,
-  },
-}));
+const ws = new WebSocket("ws://localhost:8080/ws");
 
-function PacketsGraph({ isDarkTheme }) {
+
+
+function PacketsGraph({ isDarkTheme,timeRange }) {
+  const [packet_data,setData]=useState([])
   const [zoomaxis, setZoomaxis] = useState("null");
   const [checkboxX, setCheckboxX] = useState(false);
   const [checkboxY, setCheckboxY] = useState(false);
+
   const [visibility, setVisibility] = useState({
     dl_rx: {},
     dl_err: {},
@@ -53,6 +45,64 @@ function PacketsGraph({ isDarkTheme }) {
     ul_retx: {},
     dl_retx: {},
   });
+
+  useEffect(() => {
+
+    ws.onopen = () => {
+      console.log("websocket connected");
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      setData(message.packet_data);
+    }; 
+
+    if(WebSocket.OPEN===ws.readyState){
+      ws.send(timeRange)
+    }
+
+    return ()=>{
+      ws.onclose=()=>{
+        console.log("disconnected")
+      }
+    }
+
+   
+  }, [timeRange]);
+
+  const cellData = packet_data.map(
+    ({
+      timestamp,
+      cells_0_dl_err_count,
+      cells_0_dl_retx_count,
+      cells_0_dl_rx_count,
+      cells_0_ul_retx_count,
+      cells_0_ul_tx_count,
+      cells_1_dl_err_count,
+      cells_1_dl_retx_count,
+      cells_1_dl_rx_count,
+      cells_1_ul_retx_count,
+      cells_1_ul_tx_count,
+    }) => {
+      return {
+        x: timestamp,
+        y: {
+          cells_0_dl_err_count: cells_0_dl_err_count,
+          cells_0_dl_retx_count: cells_0_dl_retx_count,
+          cells_0_dl_rx_count: cells_0_dl_rx_count,
+          cells_0_ul_retx_count: cells_0_ul_retx_count,
+          cells_0_ul_tx_count: cells_0_ul_tx_count,
+          cells_1_dl_err_count: cells_1_dl_err_count,
+          cells_1_dl_retx_count: cells_1_dl_retx_count,
+          cells_1_dl_rx_count: cells_1_dl_rx_count,
+          cells_1_ul_retx_count: cells_1_ul_retx_count,
+          cells_1_ul_tx_count: cells_1_ul_tx_count,
+        },
+      };
+    }
+  );
+
+
 
   const toggleVisibility = (cellId, graphType) => {
     setVisibility((prevVisibleData) => {
@@ -81,35 +131,6 @@ function PacketsGraph({ isDarkTheme }) {
     });
   }, []);
 
-  const now = Date.now();
-
-  for (let i = 0; i < 20; i++) {
-    const timestamp = now - (20 - i) * 1000;
-    const time = new Date(timestamp);
-    cellData.forEach((cell) => {
-      cell.dl_rx.push({
-        x: time,
-        y: cell.packets.dl_rx_count + Math.random(0, 3),
-      });
-      cell.dl_err.push({
-        x: time,
-        y: cell.packets.dl_err_count + Math.random(0, 3),
-      });
-      cell.ul_tx.push({
-        x: time,
-        y: cell.packets.ul_tx_count + Math.random(0, 3),
-      });
-      cell.ul_retx.push({
-        x: time,
-        y: cell.packets.ul_retx_count + Math.random(0, 3),
-      });
-      cell.dl_retx.push({
-        x: time,
-        y: cell.packets.dl_retx_count + Math.random(0, 3),
-      });
-    });
-  }
-
   const HandleCheckboxX = () => {
     setCheckboxX(!checkboxX);
   };
@@ -129,6 +150,59 @@ function PacketsGraph({ isDarkTheme }) {
     }
   }, [checkboxX, checkboxY]);
 
+  if (!cellData || cellData.length === 0) {
+    return null; // or render a loading indicator or an error message
+  }
+
+  const lines = Object.keys(cellData[0].y).map((key, index) => (
+   <VictoryGroup>
+     <VictoryLine
+      key={key}
+      data={cellData}
+      x="x"
+      y={(datum) => datum.y[key]}
+      style={{
+        data:{
+          stroke:color_dl[index],
+          strokeWidth:0.75
+        }
+      }}
+       />
+       
+        <VictoryScatter
+          key={key}
+          data={cellData}
+          x="x"
+          y={(datum) => datum.y[key]}
+          style={{ data: { fill: color_dl[index] } }}
+          size={0.5}
+          labels={({ datum }) => `${key}: ${datum.y[key]}`}
+          labelComponent={<VictoryTooltip />}
+        />
+   </VictoryGroup>
+      
+  ));
+
+  const legendData = Object.keys(cellData[0].y).map((key, index) => (
+    <VictoryLegend  style={{
+      labels: {
+        fontSize: 5,
+        fontWeight: "bold",
+        fill: isDarkTheme ? "white" : "black",
+      },
+    }}
+    height={10}
+    data={[
+      {
+        name: key,
+        symbol: { fill: color_dl[index], size: 2 },
+      },
+    ]}
+    />
+  ));
+
+
+
   return (
     <div>
       <label className="float-right text-black dark:text-white">
@@ -139,7 +213,6 @@ function PacketsGraph({ isDarkTheme }) {
       </label>
       <VictoryChart
         {...chartProps}
-        //maxDomain={{ y: HighestPacketCount(data) }}
         containerComponent={<VictoryZoomContainer zoomDimension={zoomaxis} />}
       >
         <VictoryAxis
@@ -156,6 +229,7 @@ function PacketsGraph({ isDarkTheme }) {
             },
             axis: { stroke: isDarkTheme ? "white" : "black" },
           }}
+          tickCount={10}
         />
         <VictoryAxis
           dependentAxis
@@ -178,270 +252,14 @@ function PacketsGraph({ isDarkTheme }) {
             axis: { stroke: isDarkTheme ? "white" : "black" },
           }}
         />
-        {cellData.map((dataSet, i) => (
-          <VictoryGroup key={i} style={victorygroupstyle}>
-            <VictoryLine
-              data={dataSet.dl_rx}
-              style={{
-                data: {
-                  stroke: visibility.dl_rx[dataSet.id]
-                    ? color_dl[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.dl_rx[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  
-                  labels: { fill: color_dl[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_dl_rx:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.dl_rx}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
+        {lines}
 
-            <VictoryLine
-              data={dataSet.dl_retx}
-              style={{
-                data: {
-                  stroke: visibility.dl_retx[dataSet.id]
-                    ? color_dl[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.dl_retx[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  
-                  labels: { fill: color_dl[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_dl_retx:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.dl_retx}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
-            <VictoryLine
-              data={dataSet.dl_err}
-              style={{
-                data: {
-                  stroke: visibility.dl_err[dataSet.id]
-                    ? color_err[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.dl_err[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  
-                  labels: { fill: color_err[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_dl_err:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.dl_err}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
-            <VictoryLine
-              data={dataSet.ul_tx}
-              style={{
-                data: {
-                  stroke: visibility.ul_tx[dataSet.id]
-                    ? color_ul[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.ul_tx[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  
-                  labels: { fill: color_ul[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_ul_tx:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.ul_tx}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
-            <VictoryLine
-              data={dataSet.ul_retx}
-              style={{
-                data: {
-                  stroke: visibility.ul_retx[dataSet.id]
-                    ? color_ul[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.ul_retx[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  
-                  labels: { fill: color_ul[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_ul_retx:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.ul_retx}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
-          </VictoryGroup>
-        ))}
+
+      
       </VictoryChart>
-      {cellData.map((dataSet, i) => (
-        <div key={i}>
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "DL_RX");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_dl_rx_count`,
-                symbol: { fill: color_dl[i], size: 2 },
-              },
-            ]}
-          />
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "DL_ERR");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            padding={{ bottom: 5 }}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_dl_err_count`,
-                symbol: { fill: color_err[i], size: 2 },
-              },
-            ]}
-          />
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "UL_TX");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            padding={{ bottom: 5 }}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_ul_tx_count`,
-                symbol: { fill: color_ul[i], size: 2 },
-              },
-            ]}
-          />
-          <VictoryLegend
-             events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "UL_RETX");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            padding={{ bottom: 5 }}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_ul_retx_count`,
-                symbol: { fill: color_ul[i], size: 2 },
-              },
-            ]}
-          />
-          <VictoryLegend
-             events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "DL_RETX");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            padding={{ bottom: 5 }}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_dl_retx_count`,
-                symbol: { fill: color_dl[i], size: 2 },
-              },
-            ]}
-          />
-        </div>
-      ))}
+      {legendData}
+
+    
     </div>
   );
 }

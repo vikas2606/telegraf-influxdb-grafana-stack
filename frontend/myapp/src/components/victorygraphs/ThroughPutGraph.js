@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { w3cwebsocket as WebSocket } from "websocket";
 import {
   VictoryChart,
   VictoryLine,
@@ -25,21 +26,57 @@ import {
   color_ul,
 } from "./helpers/chartstyle";
 
-const cellData = Object.entries(data.cells).map(([id, cell]) => ({
-  id: parseInt(id),
-  dl: [],
-  ul: [],
-  throughput: {
-    dl_bitrate: cell.throughput.dl_bitrate,
-    ul_bitrate: cell.throughput.ul_bitrate,
-  },
-}));
+const ws = new WebSocket("ws://localhost:8080/ws");
 
-function ThroughPutGraph({ isDarkTheme }) {
+function ThroughPutGraph({ isDarkTheme, timeRange }) {
+  const [throughput_data, setData] = useState([]);
+
   const [zoomaxis, setZoomaxis] = useState("null");
   const [checkboxX, setCheckboxX] = useState(false);
   const [checkboxY, setCheckboxY] = useState(false);
   const [visibility, setVisibility] = useState({ dl: {}, ul: {} });
+
+  useEffect(() => {
+    ws.onopen = () => {
+      console.log("websocket connected");
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      setData(message.throughput_data);
+    };
+
+    if (WebSocket.OPEN === ws.readyState) {
+      ws.send(timeRange);
+
+    }
+
+    return () => {
+      ws.onclose = () => {
+        console.log("disconnected");
+      };
+    };
+  }, [timeRange]);
+
+  const cellData = throughput_data.map(
+    ({
+      timestamp,
+      cells_0_dl_bitrate,
+      cells_0_ul_bitrate,
+      cells_1_dl_bitrate,
+      cells_1_ul_bitrate,
+    }) => {
+      return {
+        x: timestamp,
+        y: {
+          cells_0_dl_bitrate: cells_0_dl_bitrate,
+          cells_0_ul_bitrate: cells_0_ul_bitrate,
+          cells_1_dl_bitrate: cells_1_dl_bitrate,
+          cells_1_ul_bitrate: cells_1_ul_bitrate,
+        },
+      };
+    }
+  );
 
   const toggleVisibility = (cellId, graphType) => {
     setVisibility((prevVisibleData) => {
@@ -67,22 +104,6 @@ function ThroughPutGraph({ isDarkTheme }) {
       return updatedVisibility;
     });
   }, []);
-  const now = Date.now();
-
-  for (let i = 0; i < 20; i++) {
-    const timestamp = now - (20 - i) * 1000;
-    const time = new Date(timestamp);
-    cellData.forEach((cell) => {
-      cell.dl.push({
-        x: time,
-        y:cell.throughput.dl_bitrate +Math.floor(Math.random() * 100000000) + 1,
-      });
-      cell.ul.push({
-        x: time,
-        y: cell.throughput.ul_bitrate + Math.floor(Math.random() * 10000000) + 1,
-      });
-    });
-  }
 
   const HandleCheckboxX = () => {
     setCheckboxX(!checkboxX);
@@ -101,7 +122,60 @@ function ThroughPutGraph({ isDarkTheme }) {
     } else {
       setZoomaxis("null");
     }
+    console.log(cellData);
   }, [checkboxX, checkboxY]);
+
+  if (!cellData || cellData.length === 0) {
+    return null; // or render a loading indicator or an error message
+  }
+
+  const lines = Object.keys(cellData[0].y).map((key, index) => (
+   <VictoryGroup>
+     <VictoryLine
+      key={key}
+      data={cellData}
+      x="x"
+      y={(datum) => datum.y[key]}
+      style={{
+        data:{
+          stroke:color_dl[index],
+          strokeWidth:0.75
+        }
+      }}
+       />
+       
+         <VictoryScatter
+           key={key}
+           data={cellData}
+           x="x"
+           y={(datum) => datum.y[key]}
+           style={{ data: { fill: color_dl[index] } }}
+           size={0.5}
+           labels={({ datum }) => `${key}: ${datum.y[key]}`}
+           labelComponent={<VictoryTooltip />}
+         />
+       
+   </VictoryGroup>
+  ));
+
+  const legendData = Object.keys(cellData[0].y).map((key, index) => (
+    <VictoryLegend
+      style={{
+        labels: {
+          fontSize: 5,
+          fontWeight: "bold",
+          fill: isDarkTheme ? "white" : "black",
+        },
+      }}
+      height={10}
+      data={[
+        {
+          name: key,
+          symbol: { fill: color_dl[index], size: 2 },
+        },
+      ]}
+    />
+  ));
 
   return (
     <div>
@@ -113,7 +187,6 @@ function ThroughPutGraph({ isDarkTheme }) {
       </label>
       <VictoryChart
         {...chartProps}
-        maxDomain={{ y: HighestBitrate(data) }}
         containerComponent={<VictoryZoomContainer zoomDimension={zoomaxis} />}
       >
         <VictoryAxis
@@ -130,6 +203,7 @@ function ThroughPutGraph({ isDarkTheme }) {
             },
             axis: { stroke: isDarkTheme ? "white" : "black" },
           }}
+          tickCount={10}
         />
         <VictoryAxis
           dependentAxis
@@ -153,118 +227,9 @@ function ThroughPutGraph({ isDarkTheme }) {
             axis: { stroke: isDarkTheme ? "white" : "black" },
           }}
         />
-
-        {cellData.map((dataSet, i) => (
-          <VictoryGroup key={i} style={victorygroupstyle}>
-            <VictoryLine
-              data={dataSet.dl}
-              style={{
-                data: {
-                  stroke: visibility.dl[dataSet.id]
-                    ? color_dl[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.dl[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  labels: { fill: color_dl[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_dl:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.dl}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
-
-            <VictoryLine
-              data={dataSet.ul}
-              style={{
-                data: {
-                  stroke: visibility.ul[dataSet.id]
-                    ? color_ul[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.ul[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  labels: { fill: color_ul[i] },
-                }}
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.ul}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_ul_avg:${datum.y.toFixed(2)}`
-                }
-                labelComponent={
-                  visibility.ul[dataSet.id] ? <VictoryTooltip /> : null
-                }
-              />
-            )}
-          </VictoryGroup>
-        ))}
+        {lines}
       </VictoryChart>
-      {cellData.map((dataSet, i) => (
-        <div key={i}>
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "DL");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_dl_bitrate`,
-                symbol: { fill: color_dl[i], size: 2 },
-              },
-            ]}
-          />
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "UL");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            padding={{ bottom: 5 }}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_ul_bitrate`,
-                symbol: { fill: color_ul[i], size: 2 },
-              },
-            ]}
-          />
-        </div>
-      ))}
+      {legendData}
     </div>
   );
 }

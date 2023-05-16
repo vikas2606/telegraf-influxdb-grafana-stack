@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var client = gocloak.NewClient("http://localhost:8080/")
+var client = gocloak.NewClient("http://localhost:8081/")
 
 func get_token() *gocloak.JWT {
 	var token, err = client.LoginAdmin(context.Background(), "admin", "admin", "master")

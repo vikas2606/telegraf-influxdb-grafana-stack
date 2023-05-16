@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import data from "./data/Scheduled.json";
+import { w3cwebsocket } from "websocket";
 import {
   VictoryChart,
   VictoryLine,
@@ -23,23 +24,71 @@ import {
   chartStyles,
 } from "./helpers/chartstyle";
 
-const cellData = Object.entries(data.cells).map(([id, cell]) => ({
-  id: parseInt(id),
-  dl_sched_users_avg: [],
-  ul_sched_users_avg: [],
-  schedule: {
-    dl_sched_users_avg: cell.schedule.dl_sched_users_avg,
-    ul_sched_users_avg: cell.schedule.ul_sched_users_avg,
-  },
-}));
+const ws = new WebSocket("ws://localhost:8080/ws");
 
-function Scheduled({ isDarkTheme }) {
+function Scheduled({ isDarkTheme, timeRange }) {
+  const [Scheduled_data, setData] = useState([]);
   const [zoomaxis, setZoomaxis] = useState("null");
   const [checkboxX, setCheckboxX] = useState(false);
   const [checkboxY, setCheckboxY] = useState(false);
   const [visibility, setVisibility] = useState({ dl: {}, ul: {} });
 
+  useEffect(() => {
+    ws.onopen = () => {
+      console.log("websocket connected");
+    };
 
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      setData(message.scheduled_data);
+    };
+
+    if (WebSocket.OPEN === ws.readyState) {
+      ws.send(timeRange);
+    }
+
+    return () => {
+      ws.onclose = () => {
+        console.log("disconnected");
+      };
+    };
+  }, [timeRange]);
+
+  const cellData = Scheduled_data.map(
+    ({
+      timestamp,
+      cells_0_dl_sched_users_avg,
+      cells_0_dl_sched_users_max,
+      cells_0_dl_sched_users_min,
+      cells_0_ul_sched_users_avg,
+      cells_0_ul_sched_users_max,
+      cells_0_ul_sched_users_min,
+      cells_1_dl_sched_users_avg,
+      cells_1_dl_sched_users_max,
+      cells_1_dl_sched_users_min,
+      cells_1_ul_sched_users_avg,
+      cells_1_ul_sched_users_max,
+      cells_1_ul_sched_users_min,
+    }) => {
+      return {
+        x: timestamp,
+        y: {
+          cells_0_dl_sched_users_avg: cells_0_dl_sched_users_avg,
+          cells_0_dl_sched_users_max: cells_0_dl_sched_users_max,
+          cells_0_dl_sched_users_min: cells_0_dl_sched_users_min,
+          cells_0_ul_sched_users_avg: cells_0_ul_sched_users_avg,
+          cells_0_ul_sched_users_max: cells_0_ul_sched_users_max,
+          cells_0_ul_sched_users_min: cells_0_ul_sched_users_min,
+          cells_1_dl_sched_users_avg: cells_1_dl_sched_users_avg,
+          cells_1_dl_sched_users_max: cells_1_dl_sched_users_max,
+          cells_1_dl_sched_users_min: cells_1_dl_sched_users_min,
+          cells_1_ul_sched_users_avg: cells_1_ul_sched_users_avg,
+          cells_1_ul_sched_users_max: cells_1_ul_sched_users_max,
+          cells_1_ul_sched_users_min: cells_1_ul_sched_users_min,
+        },
+      };
+    }
+  );
 
   const toggleVisibility = (cellId, graphType) => {
     setVisibility((prevVisibleData) => {
@@ -67,25 +116,6 @@ function Scheduled({ isDarkTheme }) {
       return updatedVisibility;
     });
   }, []);
-  
-
-  const now = Date.now();
-  for (let i = 0; i < 20; i++) {
-    const timestamp = now - (20 - i) * 1000;
-    const time = new Date(timestamp);
-    cellData.forEach((cell) => {
-      cell.dl_sched_users_avg.push({
-        x: time,
-        y: cell.schedule.dl_sched_users_avg + Math.random(0.1, 0.3),
-        name: `Cell#${cell.id}_dl`,
-      });
-      cell.ul_sched_users_avg.push({
-        x: time,
-        y: cell.schedule.ul_sched_users_avg + Math.random(0.1, 0.3),
-        name: `Cell#${cell.id}_ul`,
-      });
-    });
-  }
 
   const HandleCheckboxX = () => {
     setCheckboxX(!checkboxX);
@@ -104,7 +134,61 @@ function Scheduled({ isDarkTheme }) {
     } else {
       setZoomaxis("null");
     }
+
+    console.log(cellData);
+    console.log(Scheduled_data);
   }, [checkboxX, checkboxY]);
+
+  if (!cellData || cellData.length === 0) {
+    return null; // or render a loading indicator or an error message
+  }
+
+  const lines = Object.keys(cellData[0].y).map((key, index) => (
+    <VictoryGroup>
+      <VictoryLine
+        key={key}
+        data={cellData}
+        x="x"
+        y={(datum) => datum.y[key]}
+        style={{
+          data: {
+            stroke: color_dl[index],
+            strokeWidth: 0.75,
+          },
+        }}
+      />
+
+      <VictoryScatter
+        key={key}
+        data={cellData}
+        x="x"
+        y={(datum) => datum.y[key]}
+        style={{ data: { fill: color_dl[index] } }}
+        size={0.5}
+        labels={({ datum }) => `${key}: ${datum.y[key]}`}
+        labelComponent={<VictoryTooltip />}
+      />
+    </VictoryGroup>
+  ));
+
+  const legendData = Object.keys(cellData[0].y).map((key, index) => (
+    <VictoryLegend
+      style={{
+        labels: {
+          fontSize: 5,
+          fontWeight: "bold",
+          fill: isDarkTheme ? "white" : "black",
+        },
+      }}
+      height={10}
+      data={[
+        {
+          name: key,
+          symbol: { fill: color_dl[index], size: 2 },
+        },
+      ]}
+    />
+  ));
 
   return (
     <div>
@@ -120,6 +204,7 @@ function Scheduled({ isDarkTheme }) {
       >
         <VictoryAxis
           tickFormat={XaxisProps.tickFormat}
+          tickCount={10}
           style={{
             tickLabels: {
               fontSize: chartStyles.tickLabelsFontSize,
@@ -154,117 +239,9 @@ function Scheduled({ isDarkTheme }) {
             axis: { stroke: isDarkTheme ? "white" : "black" },
           }}
         />
-        {cellData.map((dataSet, i) => (
-          <VictoryGroup key={i} style={victorygroupstyle}>
-            <VictoryLine
-              data={dataSet.dl_sched_users_avg}
-              style={{
-                data: {
-                  stroke: visibility.dl[dataSet.id]
-                    ? color_dl[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.dl[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  
-                  labels: { fill: color_dl[i] },
-                }}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_dl_avg:${datum.y.toFixed(2)}`
-                }
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.dl_sched_users_avg}
-                labelComponent={<VictoryTooltip />}
-              />
-            )}
-            <VictoryLine
-              data={dataSet.ul_sched_users_avg}
-              style={{
-                data: {
-                  stroke: visibility.ul[dataSet.id]
-                    ? color_ul[i]
-                    : "transparent",
-                },
-              }}
-            />
-            {visibility.ul[dataSet.id] && (
-              <VictoryScatter
-                style={{
-                  labels: { fill: color_ul[i] },
-                }}
-                size={({ active }) => (active ? 5 : 3)}
-                data={dataSet.ul_sched_users_avg}
-                labels={({ datum }) =>
-                  `Cell#${dataSet.id}_ul_avg:${datum.y.toFixed(2)}`
-                }
-                labelComponent={
-                  visibility.ul[dataSet.id] ? <VictoryTooltip /> : null
-                }
-              />
-            )}
-          </VictoryGroup>
-        ))}
+        {lines}
       </VictoryChart>
-      {cellData.map((dataSet, i) => (
-        <div key={i}>
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "DL");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_dl_sched_users_avg`,
-                symbol: { fill: color_dl[i], size: 2 },
-              },
-            ]}
-          />
-          <VictoryLegend
-            events={[
-              {
-                target: "data",
-                eventHandlers: {
-                  onClick: () => {
-                    toggleVisibility(dataSet.id, "UL");
-                  },
-                },
-              },
-            ]}
-            style={{
-              labels: {
-                fontSize: 5,
-                fontWeight: "bold",
-                fill: isDarkTheme ? "white" : "black",
-              },
-            }}
-            height={10}
-            padding={{ bottom: 5 }}
-            data={[
-              {
-                name: `Cell#${dataSet.id}_ul_sched_users_avg`,
-                symbol: { fill: color_ul[i], size: 2 },
-              },
-            ]}
-          />
-        </div>
-      ))}
+      {legendData}
     </div>
   );
 }
